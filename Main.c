@@ -7,6 +7,9 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <netinet/in.h>
+#include <arpa/inet.h>
+
 int main(){
 
     int socketFD = -1;
@@ -29,6 +32,9 @@ int main(){
         if(socketFD==-1){
             perror("Socket");
             continue;
+        }else{
+            struct sockaddr_in* saddr = (struct sockaddr_in*)p->ai_addr;
+            printf("ai_addr hostname ->  %s\n", inet_ntoa(saddr->sin_addr));
         }
 
         rv=connect(socketFD,p->ai_addr,p->ai_addrlen);// socket file descriptor,address to connect to,address length(determined by address family)
