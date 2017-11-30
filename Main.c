@@ -1,6 +1,11 @@
 
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <netdb.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <stdio.h>
+#include <string.h>
 
 int main(){
 
@@ -38,7 +43,7 @@ int main(){
 
     if(p==NULL){
         //was unable to find a single address that we could connect to
-        print("failed to obtain address to connect to\n");
+        printf("failed to obtain address to connect to\n");
         exit(-1);
     }
 
