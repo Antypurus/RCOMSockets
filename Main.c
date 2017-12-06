@@ -10,7 +10,19 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-int main(){
+//FTP request information types
+typedef FTP_USERNAME char*;
+typedef FTP_PASSWORD char*;
+typedef FTP_REQUEST_FILEPATH char*:
+
+typedef struct FTP_REQUEST_INFORMATION{
+    FTP_USERNAME            username;
+    FTP_PASSWORD            password;
+    FTP_REQUEST_FILEPATH    filepath;
+} FTP_REQUEST_INFORMATION;
+
+int main()
+{
 
     int socketFD = -1;
     struct addrinfo hints, *servinfo,*p;
@@ -32,9 +44,6 @@ int main(){
         if(socketFD==-1){
             perror("Socket");
             continue;
-        }else{
-            struct sockaddr_in* saddr = (struct sockaddr_in*)p->ai_addr;
-            printf("ai_addr hostname ->  %s\n", inet_ntoa(saddr->sin_addr));
         }
 
         rv=connect(socketFD,p->ai_addr,p->ai_addrlen);// socket file descriptor,address to connect to,address length(determined by address family)
