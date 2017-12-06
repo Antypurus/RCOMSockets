@@ -11,14 +11,17 @@
 #include <arpa/inet.h>
 
 //FTP request information types
+typedef FTP_URL_ADDRESS char*;
 typedef FTP_USERNAME char*;
 typedef FTP_PASSWORD char*;
 typedef FTP_REQUEST_FILEPATH char*:
 
+//structure that holds the various information required to establish FTP connection and download the file
 typedef struct FTP_REQUEST_INFORMATION{
-    FTP_USERNAME            username;
-    FTP_PASSWORD            password;
-    FTP_REQUEST_FILEPATH    filepath;
+    FTP_URL_ADDRESS         address;    //string containing address to the FTP server
+    FTP_USERNAME            username;   //string with the login username for the FTP server
+    FTP_PASSWORD            password;   //string with the login password for the FTP server
+    FTP_REQUEST_FILEPATH    filepath;   //string with the filepath to download from the FTP server
 } FTP_REQUEST_INFORMATION;
 
 int main()
