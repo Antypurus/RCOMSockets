@@ -10,7 +10,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#define FTP_PORT "21"
+#define FTP_PORT_NUMBER "21"
 
 //Types for generic usage
 typedef int SOCKET_FILE_DESC;
@@ -20,17 +20,30 @@ typedef char *FTP_URL_ADDRESS;
 typedef char *FTP_USERNAME;
 typedef char *FTP_PASSWORD;
 typedef char *FTP_REQUEST_FILEPATH;
+typedef char *FTP_PORT;
 
 //structure that holds the various information required to establish FTP connection and download the file
 typedef struct FTP_REQUEST_INFORMATION
 {
-    FTP_URL_ADDRESS         address;       //string containing address to the FTP server
-    FTP_USERNAME            username;         //string with the login username for the FTP server
-    FTP_PASSWORD            password;         //string with the login password for the FTP server
-    FTP_REQUEST_FILEPATH    filepath; //string with the filepath to download from the FTP server
+    FTP_PORT                port;       //string containing port number for the FTP server connection
+    FTP_URL_ADDRESS         address;    //string containing address to the FTP server
+    FTP_USERNAME            username;   //string with the login username for the FTP server
+    FTP_PASSWORD            password;   //string with the login password for the FTP server
+    FTP_REQUEST_FILEPATH    filepath;   //string with the filepath to download from the FTP server
 } FTP_REQUEST_INFORMATION;
 
-SOCKET_FILE_DESC getFTPServerSocket(FTP_URL_ADDRESS address)
+/*
+    This function takes the address and port number and creates a socket and connects it to that server.
+    Then it returns the Socket File Descriptor to the connected socket
+
+    Parameters:
+        address =   A string containing the server address in either URL or IP format
+        port    =   The port number to connect to.
+
+    Return:
+        - The File descriptor for the Socket Connected to the specified server
+*/
+SOCKET_FILE_DESC getFTPServerSocket(FTP_URL_ADDRESS address, FTP_PORT port)
 {
     SOCKET_FILE_DESC socketFD = -1;
     struct addrinfo hints, *servinfo, *p;
@@ -43,7 +56,7 @@ SOCKET_FILE_DESC getFTPServerSocket(FTP_URL_ADDRESS address)
     //rv = getaddrinfo("dservers.ddns.net", FTP_PORT, &hints, &servinfo);
     //rv = getaddrinfo("178.166.2.240", FTP_PORT, &hints, &servinfo);
 
-    rv = getaddrinfo(address, FTP_PORT, &hints, &servinfo);
+    rv = getaddrinfo(address, port, &hints, &servinfo);
 
     if (rv != 0)
     {
@@ -90,7 +103,28 @@ SOCKET_FILE_DESC getFTPServerSocket(FTP_URL_ADDRESS address)
 
 int main()
 {
-    SOCKET_FILE_DESC fd = getFTPServerSocket("dservers.ddns.net");
-    printf("Socket File Descriptor:%d\n",fd);
+    SOCKET_FILE_DESC fd = getFTPServerSocket("dservers.ddns.net",FTP_PORT_NUMBER);
+    char read[100000];
+    unsigned int reada = recv(fd, read, 10000, 0);
+    printf("Read:%d MSG:%s\n", reada, read);
+
+    memset(read, 0, sizeof(read));
+
+    unsigned int sent = send(fd,"User dddt",10,0);
+    reada = recv(fd, read, 10000, 0);
+    printf("Read:%d MSG:%s\n", reada, read);
+
+    memset(read, 0, sizeof(read));
+
+    sent = send(fd, "pass 1080shitalhada%2", 22, 0);
+    reada = recv(fd, read, 100000, 0);
+    printf("Read:%d MSG:%s\n", reada, read);
+
+    memset(read, 0, sizeof(read));
+
+    sent = send(fd, "pasv", 5, 0);
+    reada = recv(fd, read, 100000, 0);
+    printf("Read:%d MSG:%s\n", reada, read);
+
     return 0;
 }
