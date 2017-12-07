@@ -16,11 +16,12 @@
 typedef int SOCKET_FILE_DESC;
 
 //FTP request information types
-typedef char *FTP_URL_ADDRESS;
-typedef char *FTP_USERNAME;
-typedef char *FTP_PASSWORD;
-typedef char *FTP_REQUEST_FILEPATH;
-typedef char *FTP_PORT;
+typedef char            *FTP_URL_ADDRESS;
+typedef char            *FTP_USERNAME;
+typedef char            *FTP_PASSWORD;
+typedef char            *FTP_REQUEST_FILEPATH;
+typedef char            *FTP_PORT;
+typedef unsigned char   FTP_SERVER_CODE;
 
 //structure that holds the various information required to establish FTP connection and download the file
 typedef struct FTP_REQUEST_INFORMATION
@@ -98,6 +99,11 @@ SOCKET_FILE_DESC getFTPServerSocket(FTP_URL_ADDRESS address, FTP_PORT port)
     }
 
     freeaddrinfo(servinfo); //getaddrinfo creates a linked list as such its elements are dynamically allocates so we must free them when we no longer need them
+    return -1;
+}
+
+FTP_SERVER_CODE executeFTPlogin(SOCKET_FILE_DESC fd,FTP_USERNAME username,FTP_PASSWORD password){
+
     return -1;
 }
 
