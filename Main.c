@@ -48,6 +48,7 @@ SOCKET_FILE_DESC getFTPServerSocket(FTP_URL_ADDRESS address)
     if (rv != 0)
     {
         perror("Failed to obtain address information\n");
+        freeaddrinfo(servinfo);
         exit(-1);
     }
 
@@ -76,8 +77,10 @@ SOCKET_FILE_DESC getFTPServerSocket(FTP_URL_ADDRESS address)
     {
         //was unable to find a single address that we could connect to
         printf("failed to obtain address to connect to\n");
+        freeaddrinfo(servinfo);
         return -1;
     }else{
+        freeaddrinfo(servinfo);
         return socketFD;
     }
 
