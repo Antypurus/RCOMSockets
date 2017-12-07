@@ -30,19 +30,21 @@ typedef struct FTP_REQUEST_INFORMATION
     FTP_REQUEST_FILEPATH    filepath; //string with the filepath to download from the FTP server
 } FTP_REQUEST_INFORMATION;
 
-int main()
+SOCKET_FILE_DESC getFTPServerSocket(FTP_URL_ADDRESS address)
 {
-
     SOCKET_FILE_DESC socketFD = -1;
     struct addrinfo hints, *servinfo, *p;
     int rv;
 
     memset(&hints, 0, sizeof hints);
-    hints.ai_family = AF_UNSPEC;     //let the system decide between ipv4 and ipv6
-    hints.ai_socktype = SOCK_STREAM; //FTP is on the FTP stack , therefore we use stream sockets and not datagram sockets(UDP)
+    hints.ai_family     =   AF_UNSPEC;     //let the system decide between ipv4 and ipv6
+    hints.ai_socktype   =   SOCK_STREAM; //FTP is on the FTP stack , therefore we use stream sockets and not datagram sockets(UDP)
 
-    rv = getaddrinfo("dservers.ddns.net", FTP_PORT, &hints, &servinfo);
+    //rv = getaddrinfo("dservers.ddns.net", FTP_PORT, &hints, &servinfo);
     //rv = getaddrinfo("178.166.2.240", FTP_PORT, &hints, &servinfo);
+
+    rv = getaddrinfo(address, FTP_PORT, &hints, &servinfo);
+
     if (rv != 0)
     {
         perror("Failed to obtain address information\n");
@@ -74,9 +76,18 @@ int main()
     {
         //was unable to find a single address that we could connect to
         printf("failed to obtain address to connect to\n");
-        exit(-1);
+        return -1;
+    }else{
+        return socketFD;
     }
 
     freeaddrinfo(servinfo); //getaddrinfo creates a linked list as such its elements are dynamically allocates so we must free them when we no longer need them
+    return -1;
+}
+
+int main()
+{
+    SOCKET_FILE_DESC fd = getFTPServerSocket("dservers.ddns.net");
+    printf("Socket File Descriptor:%d\n",fd);
     return 0;
 }
