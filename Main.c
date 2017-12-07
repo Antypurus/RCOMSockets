@@ -10,14 +10,17 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-//FTP request information types
-typedef FTP_URL_ADDRESS char*;
-typedef FTP_USERNAME char*;
-typedef FTP_PASSWORD char*;
-typedef FTP_REQUEST_FILEPATH char*:
+#define FTP_PORT "21"
 
-//structure that holds the various information required to establish FTP connection and download the file
-typedef struct FTP_REQUEST_INFORMATION{
+//FTP request information types
+typedef char *FTP_URL_ADDRESS;
+typedef char *FTP_USERNAME;
+typedef char *FTP_PASSWORD;
+typedef char *FTP_REQUEST_FILEPATH;
+
+    //structure that holds the various information required to establish FTP connection and download the file
+typedef struct FTP_REQUEST_INFORMATION
+{
     FTP_URL_ADDRESS         address;    //string containing address to the FTP server
     FTP_USERNAME            username;   //string with the login username for the FTP server
     FTP_PASSWORD            password;   //string with the login password for the FTP server
@@ -35,7 +38,8 @@ int main()
     hints.ai_family = AF_UNSPEC;//let the system decide between ipv4 and ipv6
     hints.ai_socktype = SOCK_STREAM;//FTP is on the FTP stack , therefore we use stream sockets and not datagram sockets(UDP)
 
-    rv = getaddrinfo("www.google.com","http",&hints,&servinfo);
+    rv = getaddrinfo("dservers.ddns.net", FTP_PORT, &hints, &servinfo);
+    //rv = getaddrinfo("178.166.2.240", FTP_PORT, &hints, &servinfo);
     if(rv!=0){
         perror("Failed to obtain address information\n");
         exit(-1);
@@ -55,7 +59,7 @@ int main()
             close(socketFD);//no points in keeping this specific socket open as we cant connet to this address
             continue;
         }
-
+        
         break;
     }
 
