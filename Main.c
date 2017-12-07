@@ -104,27 +104,27 @@ SOCKET_FILE_DESC getFTPServerSocket(FTP_URL_ADDRESS address, FTP_PORT port)
 int main()
 {
     SOCKET_FILE_DESC fd = getFTPServerSocket("dservers.ddns.net",FTP_PORT_NUMBER);
-    char read[100000];
-    unsigned int reada = recv(fd, read, 10000, 0);
-    printf("Read:%d MSG:%s\n", reada, read);
+    char read[1000];
+    unsigned int reada = recv(fd, read, 1000, 0);
+    printf("%s\n", read);
 
     memset(read, 0, sizeof(read));
 
     unsigned int sent = send(fd,"User dddt",10,0);
-    reada = recv(fd, read, 10000, 0);
-    printf("Read:%d MSG:%s\n", reada, read);
+    reada = recv(fd, read, 1000, 0);
+    printf("%s\n", read);
 
     memset(read, 0, sizeof(read));
 
     sent = send(fd, "pass 1080shitalhada%2", 22, 0);
-    reada = recv(fd, read, 100000, 0);
-    printf("Read:%d MSG:%s\n", reada, read);
+    reada = recv(fd, read, 1000, 0);
+    printf("%s\n", read);
 
     memset(read, 0, sizeof(read));
 
     sent = send(fd, "pasv", 5, 0);
-    reada = recv(fd, read, 100000, 0);
-    printf("Read:%d MSG:%s\n", reada, read);
+    reada = recv(fd, read, 1000, 0);
+    printf("%s\n", read);
 
     return 0;
 }
