@@ -25,6 +25,7 @@ typedef char*           FTP_COMMAND;
 typedef unsigned short  FTP_SERVER_CODE;
 typedef unsigned int    FTP_PASSWORD_LENGTH;
 typedef unsigned int    FTP_USERNAME_LENGTH;
+typedef unsigned int    FTP_COMMAND_LENGTH;
 
 //structure that holds the various information required to establish FTP connection and download the file
 typedef struct FTP_REQUEST_INFORMATION
@@ -106,8 +107,72 @@ SOCKET_FILE_DESC getFTPServerSocket(FTP_URL_ADDRESS address, FTP_PORT port)
 }
 
 FTP_SERVER_CODE executeFTPlogin(SOCKET_FILE_DESC fd,FTP_USERNAME username,FTP_PASSWORD password){
+    FTP_USERNAME_LENGTH usernameLength = strlen(username)+1;
+    FTP_PASSWORD_LENGTH passwordLength = strlen(password)+1;
 
-    return -1;
+    FTP_COMMAND userCMD = (FTP_COMMAND)malloc(usernameLength + 6);//the length of the username plus the length of the FTP command
+    FTP_COMMAND passCMD = (FTP_COMMAND)malloc(passwordLength + 6);//the length of the password plus the length of the FTP command
+
+    if (passCMD == NULL || userCMD==NULL)
+    {
+        free(passCMD);
+        free(userCMD);
+        printf("[ERROR]\tFailed To allocate command buffers\n");
+        return -1;
+    }
+    //creating the user command to send to the server
+    if(strcat(userCMD, "user ") == NULL)
+    {
+        free(passCMD);
+        free(userCMD);
+        printf("[ERROR]\tFailed To create user command\n");
+        return -1;
+    }
+    if (strcat(userCMD, username) == NULL)
+    {
+        free(passCMD);
+        free(userCMD);
+        printf("[ERROR]\tFailed To create user command\n");
+        return -1;
+    }
+    //creating the pass command to send to the server
+    if (strcat(passCMD, "pass ") == NULL)
+    {
+        free(passCMD);
+        free(userCMD);
+        printf("[ERROR]\tFailed To create pass command\n");
+        return -1;
+    }
+    if (strcat(passCMD, password) == NULL)
+    {
+        free(passCMD);
+        free(userCMD);
+        printf("[ERROR]\tFailed To create pass command\n");
+        return -1;
+    }
+
+    FTP_COMMAND_LENGTH userLen = strlen(userCMD) + 1;
+    FTP_COMMAND_LENGTH passLen = strlen(passCMD) + 1;
+
+    char read[1000];
+    memset(read, 0, sizeof(read));
+    
+    unsigned int reada;
+    unsigned int sent = send(fd, userCMD, userLen, 0);
+    reada = recv(fd, read, 1000, 0);
+    printf("%s\n", read);
+
+    //need to check responses
+
+    memset(read, 0, sizeof(read));
+
+    //need to check responses
+
+    sent = send(fd, passCMD, passLen, 0);
+    reada = recv(fd, read, 1000, 0);
+    printf("%s\n", read);
+
+    return -1; //this is an internal error and not a server error
 }
 
 int main()
@@ -119,21 +184,6 @@ int main()
 
     memset(read, 0, sizeof(read));
 
-    unsigned int sent = send(fd,"User dddt",10,0);
-    reada = recv(fd, read, 1000, 0);
-    printf("%s\n", read);
-
-    memset(read, 0, sizeof(read));
-
-    sent = send(fd, "pass 1080shitalhada%2", 22, 0);
-    reada = recv(fd, read, 1000, 0);
-    printf("%s\n", read);
-
-    memset(read, 0, sizeof(read));
-
-    sent = send(fd, "pasv", 5, 0);
-    reada = recv(fd, read, 1000, 0);
-    printf("%s\n", read);
-
+    executeFTPlogin(fd, "dddt", "1080shitalhada%2");
     return 0;
 }
