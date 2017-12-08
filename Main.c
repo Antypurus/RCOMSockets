@@ -16,12 +16,15 @@
 typedef int SOCKET_FILE_DESC;
 
 //FTP request information types
-typedef char            *FTP_URL_ADDRESS;
-typedef char            *FTP_USERNAME;
-typedef char            *FTP_PASSWORD;
-typedef char            *FTP_REQUEST_FILEPATH;
-typedef char            *FTP_PORT;
-typedef unsigned char   FTP_SERVER_CODE;
+typedef char*           FTP_URL_ADDRESS;
+typedef char*           FTP_USERNAME;
+typedef char*           FTP_PASSWORD;
+typedef char*           FTP_REQUEST_FILEPATH;
+typedef char*           FTP_PORT;
+typedef char*           FTP_COMMAND;
+typedef unsigned short  FTP_SERVER_CODE;
+typedef unsigned int    FTP_PASSWORD_LENGTH;
+typedef unsigned int    FTP_USERNAME_LENGTH;
 
 //structure that holds the various information required to establish FTP connection and download the file
 typedef struct FTP_REQUEST_INFORMATION
