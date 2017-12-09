@@ -113,13 +113,14 @@ FTP_SERVER_CODE sendFTPCommand(SOCKET_FILE_DESC fd,FTP_COMMAND cmd){
     FTP_COMMAND_LENGTH length = strlen(cmd) + 1;    //obtain command lentgth
     unsigned int sent = send(fd,cmd,length,0);      //send command
     char msg[1000];
+    memset(msg, 0, sizeof(msg));                    //zero out the string so that there isnt any remnant unwanted data
     unsigned int read = recv(fd,msg,1000,0);        //read server response
     if(sent==0 ||read==0)                           //error checking
     {
         printf("failed to send command or read response\n");
         return -1;
     }else{
-        printf("Sent:%s\nReceived:%s",cmd,msg);
+        printf("Sent:%s\nReceived:%s\n",cmd,msg);
     }
     FTP_SERVER_CODE code;
     sscanf(msg,"%hu",&code);                        //isolate response code from code explanation message
@@ -130,8 +131,11 @@ FTP_SERVER_CODE sendFTPCommand(SOCKET_FILE_DESC fd,FTP_COMMAND cmd){
 DOCUMENTATION PENDING
 */
 FTP_SERVER_CODE executeFTPlogin(SOCKET_FILE_DESC fd,FTP_USERNAME username,FTP_PASSWORD password){
-    FTP_COMMAND userCMD = (FTP_COMMAND)malloc(usernameLength + 6);//the length of the username plus the length of the FTP command
-    FTP_COMMAND passCMD = (FTP_COMMAND)malloc(passwordLength + 6);//the length of the password plus the length of the FTP command
+    FTP_USERNAME_LENGTH usernameLength = strlen(username) + 1;      //determine length of username
+    FTP_PASSWORD_LENGTH passwordLength = strlen(username) + 1;      //determine length of password
+
+    FTP_COMMAND userCMD = (FTP_COMMAND)malloc(usernameLength + 6);  //the length of the username plus the length of the FTP command
+    FTP_COMMAND passCMD = (FTP_COMMAND)malloc(passwordLength + 6);  //the length of the password plus the length of the FTP command
 
     if (passCMD == NULL || userCMD==NULL)
     {
@@ -172,7 +176,16 @@ FTP_SERVER_CODE executeFTPlogin(SOCKET_FILE_DESC fd,FTP_USERNAME username,FTP_PA
     }
 
     FTP_SERVER_CODE code = sendFTPCommand(fd,userCMD);
+    if(code != 331){
+        printf("Incorrect Server Response Issue sending command detected\n");
+        return -1;
+    }
     code = sendFTPCommand(fd,passCMD);
+    if (code != 230)
+    {
+        printf("Incorrect Server Response Issue sending command detected\n");
+        return -1;
+    }
 
     return code; //this is an internal error and not a server error
 }
