@@ -58,9 +58,6 @@ SOCKET_FILE_DESC getFTPServerSocket(FTP_URL_ADDRESS address, FTP_PORT port)
     hints.ai_family     =   AF_UNSPEC;     //let the system decide between ipv4 and ipv6
     hints.ai_socktype   =   SOCK_STREAM; //FTP is on the FTP stack , therefore we use stream sockets and not datagram sockets(UDP)
 
-    //rv = getaddrinfo("dservers.ddns.net", FTP_PORT, &hints, &servinfo);
-    //rv = getaddrinfo("178.166.2.240", FTP_PORT, &hints, &servinfo);
-
     rv = getaddrinfo(address, port, &hints, &servinfo);
 
     if (rv != 0)
@@ -127,6 +124,10 @@ FTP_SERVER_CODE sendFTPCommand(SOCKET_FILE_DESC fd,FTP_COMMAND cmd){
     return code;
 }
 
+FTP_PORT enterFTPPassiveMode(SOCKET_FILE_DESC fd){
+
+}
+
 /*
 DOCUMENTATION PENDING
 */
@@ -136,8 +137,10 @@ FTP_SERVER_CODE executeFTPlogin(SOCKET_FILE_DESC fd,FTP_USERNAME username,FTP_PA
 
     FTP_COMMAND userCMD = (FTP_COMMAND)malloc(usernameLength + 6);  //the length of the username plus the length of the FTP command
     FTP_COMMAND passCMD = (FTP_COMMAND)malloc(passwordLength + 6);  //the length of the password plus the length of the FTP command
+    memset(userCMD, 0, usernameLength + 6);                         //zero the string buffer so as not to cause any issues
+    memset(passCMD, 0, usernameLength + 6);                         //zero the string buffer so as not to cause any issues
 
-    if (passCMD == NULL || userCMD==NULL)
+    if (passCMD == NULL || userCMD == NULL)
     {
         free(passCMD);
         free(userCMD);
@@ -176,29 +179,71 @@ FTP_SERVER_CODE executeFTPlogin(SOCKET_FILE_DESC fd,FTP_USERNAME username,FTP_PA
     }
 
     FTP_SERVER_CODE code = sendFTPCommand(fd,userCMD);
-    if(code != 331){
+    if(code != 331)
+    {
+        free(passCMD);
+        free(userCMD);
         printf("Incorrect Server Response Issue sending command detected\n");
         return -1;
     }
     code = sendFTPCommand(fd,passCMD);
     if (code != 230)
     {
+        free(passCMD);
+        free(userCMD);
         printf("Incorrect Server Response Issue sending command detected\n");
         return -1;
     }
 
+    free(passCMD);
+    free(userCMD);
     return code; //this is an internal error and not a server error
+}
+
+
+FTP_REQUEST_INFORMATION parseFTPURL(char *url)
+{
+    char username[1000];
+    char password[1000];
+    char domain[1000];
+    char path[1000];
+    sscanf(url, "ftp://%99[^:]:%99[^@]@%99[^/]/%99s", username, password, domain, path);
 }
 
 int main()
 {
-    SOCKET_FILE_DESC fd = getFTPServerSocket("dservers.ddns.net",FTP_PORT_NUMBER);
-    char read[1000];
-    unsigned int reada = recv(fd, read, 1000, 0);
-    printf("%s\n", read);
+    char url[] = "ftp://dddt:1080shitalhada%2@dservers.ddns.net/path/patg";
+    char username[1000];
+    char password[1000];
+    char domain[1000];
+    char path[1000];
+    sscanf(url,"ftp://%99[^:]:%99[^@]@%99[^/]/%99s",username,password,domain,path);
+    printf("%s\n%s\n%s\n%s\n",username,password,domain,path);
 
-    memset(read, 0, sizeof(read));
+    SOCKET_FILE_DESC fd = getFTPServerSocket("dservers.ddns.net", FTP_PORT_NUMBER);
+    
+    {
+        char read[1000];
+        memset(read, 0, sizeof(read));
+        unsigned int reada = recv(fd, read, 1000, 0);
+        printf("%s\n", read);
+    }
 
     executeFTPlogin(fd, "dddt", "1080shitalhada%2");
+    char msg[1000];
+    memset(msg,0,sizeof(msg));
+    send(fd,"pasv",5,0);
+    recv(fd,msg,1000,0);
+    printf("MSG:%s\n",msg);
+    unsigned int arr[6];
+    arr[0] = 0;
+    arr[1] = 0;
+    arr[2] = 0;
+    arr[3] = 0;
+    arr[4] = 0;
+    arr[5] = 0;
+    int code = 200;
+    sscanf(msg, "%d Entering Passive Mode (%d,%d,%d,%d,%d,%d)", &code, &arr[0], &arr[1], &arr[2], &arr[3], &arr[4], &arr[5]);
+    printf("%d \n%d \n%d \n%d \n%d \n%d \n%d\n", code, arr[0], arr[1], arr[2], arr[3], arr[4], arr[5]);
     return 0;
 }
