@@ -106,6 +106,16 @@ SOCKET_FILE_DESC getFTPServerSocket(FTP_URL_ADDRESS address, FTP_PORT port)
     return -1;
 }
 
+/*
+DOCUMENTATION PENDING
+*/
+FTP_SERVER_CODE sendFTPCommand(SOCKET_FILE_DESC fd,FTP_COMMAND cmd){
+
+}
+
+/*
+DOCUMENTATION PENDING
+*/
 FTP_SERVER_CODE executeFTPlogin(SOCKET_FILE_DESC fd,FTP_USERNAME username,FTP_PASSWORD password){
     FTP_USERNAME_LENGTH usernameLength = strlen(username)+1;
     FTP_PASSWORD_LENGTH passwordLength = strlen(password)+1;
@@ -160,7 +170,10 @@ FTP_SERVER_CODE executeFTPlogin(SOCKET_FILE_DESC fd,FTP_USERNAME username,FTP_PA
     unsigned int reada;
     unsigned int sent = send(fd, userCMD, userLen, 0);
     reada = recv(fd, read, 1000, 0);
-    printf("%s\n", read);
+    int code = 0;
+    sscanf(read,"%d",&code);
+    printf("code:%d\n",code);
+    printf("msg:%s\n", read);
 
     //need to check responses
 
