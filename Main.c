@@ -528,15 +528,24 @@ FTP_DOWNLOAD_STATUS downloadFTPfile(SOCKET_FILE_DESC controll, SOCKET_FILE_DESC 
     return sentAmmount;
 }
 
-int main()
+int main(int argc, char** argv)
 {
-    //char url[] = "ftp://dddt:1080shitalhada%2@dservers.ddns.net/b.mp4";
-    char url[] = "ftp://rcomtest:rcomtest@dservers.ddns.net/b.mp4";
-    FTP_REQUEST_INFORMATION info = parseFTPURL(url);
+    if(argc!=2){
+        printf("incorrect number of parameters\n");
+        return 0;
+    }
+    //char url[] = "ftp://rcomtest:rcomtest@dservers.ddns.net/b.mp4";
+    FTP_REQUEST_INFORMATION info = parseFTPURL(argv[1]);
+    if(info.error){
+        return 0;
+    }
     printf("username:%s\npassword:%s\ndomain:%s\npath:%s\n\n",info.username,info.password,info.address,info.filepath);
 
     SOCKET_FILE_DESC controll = getFTPServerSocket(info.address, FTP_PORT_NUMBER);
-    
+    if (controll<0){
+        return 0;
+    }
+
     //this section of code reads any on-connect messages the server migth send
     {
         char read[1000];
@@ -545,9 +554,19 @@ int main()
         printf("%s\n", read);
     }
 
-    executeFTPlogin(controll, info.username, info.password);
+    if(executeFTPlogin(controll, info.username, info.password)!=230){
+        printf("Incorrect Credential Used\n");
+        return 0;
+    }
     FTP_CONNECTION_INFORMATION con = enterFTPPassiveMode(controll);
+    if(con.error){
+        return 0;
+    }
     SOCKET_FILE_DESC download = getFTPServerSocket(con.address, con.port);
+    if (download < 0)
+    {
+        return 0;
+    }
     downloadFTPfile(controll, download,info.filepath,USE_BINARY_MODE);
     return 0;
 }
