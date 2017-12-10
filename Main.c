@@ -16,6 +16,7 @@
 typedef int SOCKET_FILE_DESC;
 
 //FTP request information types
+typedef char*           FTP_URL_FORMAT;
 typedef char*           FTP_URL_ADDRESS;
 typedef char*           FTP_USERNAME;
 typedef char*           FTP_PASSWORD;
@@ -26,10 +27,12 @@ typedef unsigned short  FTP_SERVER_CODE;
 typedef unsigned int    FTP_PASSWORD_LENGTH;
 typedef unsigned int    FTP_USERNAME_LENGTH;
 typedef unsigned int    FTP_COMMAND_LENGTH;
+typedef unsigned char   FTP_ERROR;
 
 //structure that holds the various information required to establish FTP connection and download the file
 typedef struct FTP_REQUEST_INFORMATION
 {
+    FTP_ERROR               error;
     FTP_PORT                port;       //string containing port number for the FTP server connection
     FTP_URL_ADDRESS         address;    //string containing address to the FTP server
     FTP_USERNAME            username;   //string with the login username for the FTP server
@@ -200,13 +203,25 @@ FTP_SERVER_CODE executeFTPlogin(SOCKET_FILE_DESC fd,FTP_USERNAME username,FTP_PA
     return code; //this is an internal error and not a server error
 }
 
-
-FTP_REQUEST_INFORMATION parseFTPURL(char *url)
+FTP_REQUEST_INFORMATION parseFTPURL(FTP_URL_FORMAT url)
 {
-    char username[1000];
-    char password[1000];
-    char domain[1000];
-    char path[1000];
+    size_t length = strlen(url)+1;
+    FTP_USERNAME username = (FTP_USERNAME)malloc(length);
+    FTP_PASSWORD password = (FTP_PASSWORD) malloc(length);
+    FTP_URL_ADDRESS domain = (FTP_URL_ADDRESS)malloc(length);
+    FTP_REQUEST_FILEPATH path = (FTP_REQUEST_FILEPATH)malloc(length);
+
+    if(username == NULL || password == NULL || domain == NULL || path == NULL){
+        free(username);
+        free(password);
+        free(domain);
+        free(path);
+        printf("Failed to allocate buffer\n");
+        FTP_REQUEST_INFORMATION err;
+        err.error = 1;
+        return err;
+    }
+
     sscanf(url, "ftp://%99[^:]:%99[^@]@%99[^/]/%99s", username, password, domain, path);
 }
 
