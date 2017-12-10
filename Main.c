@@ -539,7 +539,6 @@ int main(int argc, char** argv)
     if(info.error){
         return 0;
     }
-    printf("username:%s\npassword:%s\ndomain:%s\npath:%s\n\n",info.username,info.password,info.address,info.filepath);
 
     SOCKET_FILE_DESC controll = getFTPServerSocket(info.address, FTP_PORT_NUMBER);
     if (controll<0){
