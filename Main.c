@@ -6,9 +6,14 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <string.h>
-
+#include <libgen.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
+#define USE_BINARY_MODE 0
+#define AMMOUNT_PER_DOWNLOAD_READ 10000000
 
 #define FTP_PORT_NUMBER "21"
 
@@ -16,18 +21,22 @@
 typedef int SOCKET_FILE_DESC;
 
 //FTP request information types
-typedef char*           FTP_URL_FORMAT;
-typedef char*           FTP_URL_ADDRESS;
-typedef char*           FTP_USERNAME;
-typedef char*           FTP_PASSWORD;
-typedef char*           FTP_REQUEST_FILEPATH;
-typedef char*           FTP_PORT;
-typedef char*           FTP_COMMAND;
-typedef unsigned short  FTP_SERVER_CODE;
-typedef unsigned int    FTP_PASSWORD_LENGTH;
-typedef unsigned int    FTP_USERNAME_LENGTH;
-typedef unsigned int    FTP_COMMAND_LENGTH;
-typedef unsigned char   FTP_ERROR;
+typedef char*               FTP_URL_FORMAT;
+typedef char*               FTP_URL_ADDRESS;
+typedef char*               FTP_USERNAME;
+typedef char*               FTP_PASSWORD;
+typedef char*               FTP_REQUEST_FILEPATH;
+typedef char*               FTP_FILENAME;
+typedef char*               FTP_PORT;
+typedef char*               FTP_COMMAND;
+typedef char*               FTP_FILE_BUFFER;
+typedef unsigned short      FTP_SERVER_CODE;
+typedef unsigned int        FTP_PASSWORD_LENGTH;
+typedef unsigned int        FTP_USERNAME_LENGTH;
+typedef unsigned int        FTP_COMMAND_LENGTH;
+typedef unsigned long long  FTP_FILESIZE;
+typedef unsigned char       FTP_ERROR;
+typedef unsigned char       FTP_DOWNLOAD_STATUS;
 
 //structure that holds the various information required to establish FTP connection and download the file
 typedef struct FTP_REQUEST_INFORMATION
@@ -61,8 +70,7 @@ typedef struct FTP_CONNECTION_INFORMATION
     Return:
         - The File descriptor for the Socket Connected to the specified server
 */
-    SOCKET_FILE_DESC
-    getFTPServerSocket(FTP_URL_ADDRESS address, FTP_PORT port)
+SOCKET_FILE_DESC getFTPServerSocket(FTP_URL_ADDRESS address, FTP_PORT port)
 {
     SOCKET_FILE_DESC socketFD = -1;
     struct addrinfo hints, *servinfo, *p;
@@ -109,6 +117,7 @@ typedef struct FTP_CONNECTION_INFORMATION
         freeaddrinfo(servinfo);
         return -1;
     }else{
+        printf("Connected to:\n\tAddress:%s\n\tPort:%s\n\n",address,port);
         freeaddrinfo(servinfo);
         return socketFD;
     }
@@ -373,24 +382,172 @@ FTP_REQUEST_INFORMATION parseFTPURL(FTP_URL_FORMAT url)
     return request;
 }
 
+FTP_FILESIZE getFTPfilesize(SOCKET_FILE_DESC controll,FTP_REQUEST_FILEPATH filepath){
+    FTP_COMMAND_LENGTH len = strlen(filepath) + 6;
+    FTP_COMMAND sizeCmd = (FTP_COMMAND)malloc(len);
+    if (sizeCmd == NULL)
+    {
+        printf("Error allocating size command\n");
+        return 0; //0 is the standard internal error code
+    }
+    memset(sizeCmd, 0, len);
+
+    if (strcat(sizeCmd, "size ") == NULL)
+    {
+        printf("Error creating retrieve command\n");
+        return 0; //0 is the standard internal error code
+    }
+    if (strcat(sizeCmd, filepath) == NULL)
+    {
+        printf("Error creating retrieve command\n");
+        return 0; //0 is the standard internal error code
+    }
+
+    unsigned int sent = send(controll,sizeCmd,len,0);
+    if(sent==0){
+        printf("Error sending size command\n");
+        return 0;
+    }
+
+    char msg[1000];
+    unsigned int rece = recv(controll,msg,1000,0);
+    if(rece==0){
+        printf("Error receiving from server\n");
+        return 0;
+    }
+
+    FTP_SERVER_CODE code = 0;
+    FTP_FILESIZE size = 0;
+    unsigned int split = sscanf(msg,"%d %lu",&code,&size);
+
+    if(split != 2){
+        printf("Error splitting return message\n");
+        return 0; //0 is the standard internal error code
+    }
+
+    if (code == 550)
+    {
+        printf("Error locating specified file\n");
+        return 0; //0 is the standard internal error code
+    }
+
+    if(code!=213){
+        printf("Incorrect return code received from server\n");
+        return 0;
+    }
+
+    return size;
+}
+
+FTP_FILESIZE getFTPfile(SOCKET_FILE_DESC download, FTP_FILENAME filename, FTP_FILESIZE expectedSize){
+    unsigned int fd = open(filename, O_WRONLY | O_CREAT);
+    if(fd<0){
+        printf("error opening file\n");
+        return 0;
+    }
+
+    FTP_FILE_BUFFER *buf = (FTP_FILE_BUFFER)malloc(AMMOUNT_PER_DOWNLOAD_READ);
+    if(buf == NULL){
+        printf("Error Allocating File Buffer\n");
+        return 0;
+    }
+
+    FTP_FILESIZE readammount = 0;
+    unsigned long long read = 2;
+
+    while(read!=0){
+        read = 0;
+        memset(buf, 0, AMMOUNT_PER_DOWNLOAD_READ);
+        read = recv(download, buf, AMMOUNT_PER_DOWNLOAD_READ-1,0);
+
+        unsigned int writeA = write(fd,buf,read);
+        readammount += writeA;
+
+        if (writeA!=read){
+            printf("Error writing to file\n");
+            return readammount;
+        }
+
+        double progression = (((double)readammount) / expectedSize)*100;
+        printf("Download at %f %\n Current Speed:%d Bytes/read\n", progression, writeA);
+    }
+
+    close(fd);
+    return readammount;
+}
+
+FTP_DOWNLOAD_STATUS downloadFTPfile(SOCKET_FILE_DESC controll, SOCKET_FILE_DESC download, FTP_REQUEST_FILEPATH filepath, unsigned char useBinaryMode)
+{
+    FTP_FILENAME filename = basename(filepath);
+    if(useBinaryMode){
+        FTP_SERVER_CODE code = sendFTPCommand(controll,"type i");
+    }
+
+    FTP_COMMAND_LENGTH len = strlen(filepath) + 6;
+    FTP_COMMAND command = (FTP_COMMAND)malloc(len);
+
+    if(command == NULL)
+    {
+        printf("Error allocating retrieve command\n");
+        return 0; //0 is the standard internal error code
+    }
+
+    memset(command, 0, len);
+
+    if(strcat(command,"retr ") == NULL)
+    {
+        printf("Error creating retrieve command\n");
+        return 0;//0 is the standard internal error code
+    }
+    if (strcat(command, filepath) == NULL)
+    {
+        printf("Error creating retrieve command\n");
+        return 0; //0 is the standard internal error code
+    }
+
+    FTP_SERVER_CODE code = 0;
+    FTP_FILESIZE size = getFTPfilesize(controll,filepath);
+
+    if(size==0){
+        return 0;
+    }
+
+    code = sendFTPCommand(controll, command);
+    if (code == 550)
+    {
+        printf("Error locating specified file\n");
+        return 0; //0 is the standard internal error code
+    }
+
+    FTP_FILESIZE sentAmmount = getFTPfile(download,filename,size);
+    if (sentAmmount != size){
+        printf("A Timeout Hapeed while downloading\n");
+        return sentAmmount;
+    }
+
+    return sentAmmount;
+}
+
 int main()
 {
-    char url[] = "ftp://dddt:1080shitalhada%2@dservers.ddns.net/path/patg/p";
+    //char url[] = "ftp://dddt:1080shitalhada%2@dservers.ddns.net/b.mp4";
+    char url[] = "ftp://rcomtest:rcomtest@dservers.ddns.net/b.mp4";
     FTP_REQUEST_INFORMATION info = parseFTPURL(url);
     printf("username:%s\npassword:%s\ndomain:%s\npath:%s\n\n",info.username,info.password,info.address,info.filepath);
 
-    SOCKET_FILE_DESC fd = getFTPServerSocket("dservers.ddns.net", FTP_PORT_NUMBER);
+    SOCKET_FILE_DESC controll = getFTPServerSocket(info.address, FTP_PORT_NUMBER);
     
     //this section of code reads any on-connect messages the server migth send
     {
         char read[1000];
         memset(read, 0, sizeof(read));
-        unsigned int reada = recv(fd, read, 1000, 0);
+        unsigned int reada = recv(controll, read, 1000, 0);
         printf("%s\n", read);
     }
 
-    executeFTPlogin(fd, "dddt", "1080shitalhada%2");
-    FTP_CONNECTION_INFORMATION con = enterFTPPassiveMode(fd);
-    SOCKET_FILE_DESC fd2 = getFTPServerSocket(con.address, con.port);
+    executeFTPlogin(controll, info.username, info.password);
+    FTP_CONNECTION_INFORMATION con = enterFTPPassiveMode(controll);
+    SOCKET_FILE_DESC download = getFTPServerSocket(con.address, con.port);
+    downloadFTPfile(controll, download,info.filepath,USE_BINARY_MODE);
     return 0;
 }
