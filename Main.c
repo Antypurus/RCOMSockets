@@ -41,6 +41,16 @@ typedef struct FTP_REQUEST_INFORMATION
 } FTP_REQUEST_INFORMATION;
 
 /*
+DOCUMENTATION PENDING
+*/
+typedef struct FTP_CONNECTION_INFORMATION
+{
+    FTP_ERROR               error;
+    FTP_PORT                port;
+    FTP_URL_ADDRESS         address;
+} FTP_CONNECTION_INFORMATION;
+
+    /*
     This function takes the address and port number and creates a socket and connects it to that server.
     Then it returns the Socket File Descriptor to the connected socket
 
@@ -51,7 +61,8 @@ typedef struct FTP_REQUEST_INFORMATION
     Return:
         - The File descriptor for the Socket Connected to the specified server
 */
-SOCKET_FILE_DESC getFTPServerSocket(FTP_URL_ADDRESS address, FTP_PORT port)
+    SOCKET_FILE_DESC
+    getFTPServerSocket(FTP_URL_ADDRESS address, FTP_PORT port)
 {
     SOCKET_FILE_DESC socketFD = -1;
     struct addrinfo hints, *servinfo, *p;
@@ -109,7 +120,8 @@ SOCKET_FILE_DESC getFTPServerSocket(FTP_URL_ADDRESS address, FTP_PORT port)
 /*
     This function send the passed command to the server via the passed socket file descriptor
 */
-FTP_SERVER_CODE sendFTPCommand(SOCKET_FILE_DESC fd,FTP_COMMAND cmd){
+FTP_SERVER_CODE sendFTPCommand(SOCKET_FILE_DESC fd,FTP_COMMAND cmd)
+{
     FTP_COMMAND_LENGTH length = strlen(cmd) + 1;    //obtain command lentgth
     unsigned int sent = send(fd,cmd,length,0);      //send command
     char msg[1000];
@@ -127,14 +139,120 @@ FTP_SERVER_CODE sendFTPCommand(SOCKET_FILE_DESC fd,FTP_COMMAND cmd){
     return code;
 }
 
-FTP_PORT enterFTPPassiveMode(SOCKET_FILE_DESC fd){
+/*
+DOCUMENTATION PENDING
+*/
+FTP_CONNECTION_INFORMATION generateFTPaddressAndPort(unsigned int *array){
+    FTP_PORT port = (FTP_PORT)malloc(1000);                         //more than we should need but it will later be resized
+    FTP_URL_ADDRESS address = (FTP_URL_ADDRESS)malloc(3+3+3+3+3+1); //space for 3 digits per field plus the dot separators + \n
+    memset(port,0,1000);
+    memset(address, 0,3+3+3+3+3+1);
 
+    for (unsigned int i = 0; i < 4; ++i)
+    {
+        char num[10];
+
+        if (sprintf(num, "%d", array[i])<0)
+        {
+            printf("Network Error creating PASV command return\n");
+            FTP_CONNECTION_INFORMATION err;
+            err.error = 1;
+            return err;
+        }
+
+        if (strcat(address, num) == NULL)
+        {
+            printf("Network Error creating PASV command return\n");
+            FTP_CONNECTION_INFORMATION err;
+            err.error = 1;
+            return err;
+        }
+
+        if(i!=3){
+            if (strcat(address, ".") == NULL)
+            {
+                printf("Network Error creating PASV command return\n");
+                FTP_CONNECTION_INFORMATION err;
+                err.error = 1;
+                return err;
+            }
+        }
+    }
+
+    unsigned int portN = array[4]*256+array[5];
+    if(sprintf(port,"%d",portN)<0){
+        printf("Network Error creating PASV command return\n");
+        FTP_CONNECTION_INFORMATION err;
+        err.error = 1;
+        return err;
+    }
+
+    void* check1 = realloc(address,strlen(address)+1);
+    void *check2 = realloc(port, strlen(port) + 1);
+
+    if (check1 == NULL || check2 == NULL){
+        printf("Network Error resizing PASV command return\n");
+        FTP_CONNECTION_INFORMATION err;
+        err.error = 1;
+        return err;
+    }
+
+    FTP_CONNECTION_INFORMATION info;
+    info.error = 0;
+    info.address = address;
+    info.port = port;
+    return info;
 }
 
 /*
 DOCUMENTATION PENDING
 */
-FTP_SERVER_CODE executeFTPlogin(SOCKET_FILE_DESC fd,FTP_USERNAME username,FTP_PASSWORD password){
+FTP_CONNECTION_INFORMATION enterFTPPassiveMode(SOCKET_FILE_DESC fd)
+{
+    char msg[1000];
+    memset(msg, 0, sizeof(msg));
+    printf("Sending:pasv\n");
+    unsigned int sent = send(fd, "pasv", 5, 0);
+    if(sent!=5){
+        printf("Network Error Sending PASV command\n");
+        FTP_CONNECTION_INFORMATION err;
+        err.error = 1;
+        return err;
+    }
+
+    unsigned int received = recv(fd, msg, 1000, 0);
+    if (received==0){
+        printf("Network Error Sending PASV command\n");
+        FTP_CONNECTION_INFORMATION err;
+        err.error = 1;
+        return err;
+    }
+    printf("Server Reponses:%s\n", msg);
+    unsigned int arr[6];//contains de address and port
+    {
+        arr[0] = 0;
+        arr[1] = 0;
+        arr[2] = 0;
+        arr[3] = 0;
+        arr[4] = 0;
+        arr[5] = 0;
+    }
+    int code = 0;
+    sscanf(msg, "%d Entering Passive Mode (%d,%d,%d,%d,%d,%d)", &code, &arr[0], &arr[1], &arr[2], &arr[3], &arr[4], &arr[5]);
+    if(code!=227){
+        printf("Incorrect Server Response received aborting\n");
+        FTP_CONNECTION_INFORMATION err;
+        err.error = 1;
+        return err;
+    }
+    return generateFTPaddressAndPort(arr);
+}
+
+/*
+DOCUMENTATION PENDING
+*/
+FTP_SERVER_CODE executeFTPlogin(SOCKET_FILE_DESC fd,FTP_USERNAME username,FTP_PASSWORD password)
+{
     FTP_USERNAME_LENGTH usernameLength = strlen(username) + 1;      //determine length of username
     FTP_PASSWORD_LENGTH passwordLength = strlen(username) + 1;      //determine length of password
 
@@ -203,6 +321,9 @@ FTP_SERVER_CODE executeFTPlogin(SOCKET_FILE_DESC fd,FTP_USERNAME username,FTP_PA
     return code; //this is an internal error and not a server error
 }
 
+/*
+DOCUMENTATION PENDING
+*/
 FTP_REQUEST_INFORMATION parseFTPURL(FTP_URL_FORMAT url)
 {
     size_t length = strlen(url)+1;
@@ -254,16 +375,13 @@ FTP_REQUEST_INFORMATION parseFTPURL(FTP_URL_FORMAT url)
 
 int main()
 {
-    char url[] = "ftp://dddt:1080shitalhada%2@dservers.ddns.net/path/patg";
-    char username[1000];
-    char password[1000];
-    char domain[1000];
-    char path[1000];
-    sscanf(url,"ftp://%99[^:]:%99[^@]@%99[^/]/%99s",username,password,domain,path);
-    printf("%s\n%s\n%s\n%s\n",username,password,domain,path);
+    char url[] = "ftp://dddt:1080shitalhada%2@dservers.ddns.net/path/patg/p";
+    FTP_REQUEST_INFORMATION info = parseFTPURL(url);
+    printf("username:%s\npassword:%s\ndomain:%s\npath:%s\n\n",info.username,info.password,info.address,info.filepath);
 
     SOCKET_FILE_DESC fd = getFTPServerSocket("dservers.ddns.net", FTP_PORT_NUMBER);
     
+    //this section of code reads any on-connect messages the server migth send
     {
         char read[1000];
         memset(read, 0, sizeof(read));
@@ -272,20 +390,7 @@ int main()
     }
 
     executeFTPlogin(fd, "dddt", "1080shitalhada%2");
-    char msg[1000];
-    memset(msg,0,sizeof(msg));
-    send(fd,"pasv",5,0);
-    recv(fd,msg,1000,0);
-    printf("MSG:%s\n",msg);
-    unsigned int arr[6];
-    arr[0] = 0;
-    arr[1] = 0;
-    arr[2] = 0;
-    arr[3] = 0;
-    arr[4] = 0;
-    arr[5] = 0;
-    int code = 200;
-    sscanf(msg, "%d Entering Passive Mode (%d,%d,%d,%d,%d,%d)", &code, &arr[0], &arr[1], &arr[2], &arr[3], &arr[4], &arr[5]);
-    printf("%d \n%d \n%d \n%d \n%d \n%d \n%d\n", code, arr[0], arr[1], arr[2], arr[3], arr[4], arr[5]);
+    FTP_CONNECTION_INFORMATION con = enterFTPPassiveMode(fd);
+    SOCKET_FILE_DESC fd2 = getFTPServerSocket(con.address, con.port);
     return 0;
 }
