@@ -211,7 +211,8 @@ FTP_REQUEST_INFORMATION parseFTPURL(FTP_URL_FORMAT url)
     FTP_URL_ADDRESS domain = (FTP_URL_ADDRESS)malloc(length);
     FTP_REQUEST_FILEPATH path = (FTP_REQUEST_FILEPATH)malloc(length);
 
-    if(username == NULL || password == NULL || domain == NULL || path == NULL){
+    if(username == NULL || password == NULL || domain == NULL || path == NULL)
+    {
         free(username);
         free(password);
         free(domain);
@@ -223,6 +224,32 @@ FTP_REQUEST_INFORMATION parseFTPURL(FTP_URL_FORMAT url)
     }
 
     sscanf(url, "ftp://%99[^:]:%99[^@]@%99[^/]/%99s", username, password, domain, path);
+
+    void* check = realloc(username,strlen(username)+1);
+    void* check2 = realloc(password,strlen(password)+1);
+    void* check3 = realloc(domain,strlen(domain)+1);
+    void* check4 = realloc(path,strlen(path)+1);
+
+    if (check == NULL || check2 == NULL || check3 == NULL || check4 == NULL)
+    {
+        free(username);
+        free(password);
+        free(domain);
+        free(path);
+        printf("Failed to reallocate buffer\n");
+        FTP_REQUEST_INFORMATION err;
+        err.error = 1;
+        return err;
+    }
+
+    FTP_REQUEST_INFORMATION request;
+    request.username = username;
+    request.password = password;
+    request.address = domain;
+    request.filepath = path;
+    request.error = 0;
+
+    return request;
 }
 
 int main()
