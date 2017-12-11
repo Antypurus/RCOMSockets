@@ -131,8 +131,8 @@ SOCKET_FILE_DESC getFTPServerSocket(FTP_URL_ADDRESS address, FTP_PORT port)
 */
 FTP_SERVER_CODE sendFTPCommand(SOCKET_FILE_DESC fd,FTP_COMMAND cmd)
 {
-    FTP_COMMAND_LENGTH length = strlen(cmd)+1;    //obtain command lentgth
-    printf("Sending:%s\n",cmd);
+    FTP_COMMAND_LENGTH length = strlen(cmd);    //obtain command lentgth
+    printf("Sending:...%s...\n", cmd);
     unsigned int sent = 0;
     sent = write(fd, cmd, length); //send command
     printf("sent:%d\n",sent);
@@ -227,15 +227,15 @@ FTP_CONNECTION_INFORMATION enterFTPPassiveMode(SOCKET_FILE_DESC fd)
     char msg[1000];
     memset(msg, 0, sizeof(msg));
     printf("Sending:pasv\n");
-    unsigned int sent = send(fd, "pasv", 5, 0);
-    if(sent!=5){
+    unsigned int sent = write(fd, "PASV\r\n", 6);
+    if(sent!=6){
         printf("Network Error Sending PASV command\n");
         FTP_CONNECTION_INFORMATION err;
         err.error = 1;
         return err;
     }
-
-    unsigned int received = recv(fd, msg, 1000, 0);
+    printf("here\n");
+    unsigned int received = read(fd, msg, 1000);
     if (received==0){
         printf("Network Error Sending PASV command\n");
         FTP_CONNECTION_INFORMATION err;
@@ -268,13 +268,13 @@ DOCUMENTATION PENDING
 */
 FTP_SERVER_CODE executeFTPlogin(SOCKET_FILE_DESC fd,FTP_USERNAME username,FTP_PASSWORD password)
 {
-    FTP_USERNAME_LENGTH usernameLength = strlen(username) + 1;      //determine length of username
-    FTP_PASSWORD_LENGTH passwordLength = strlen(username) + 1;      //determine length of password
+    FTP_USERNAME_LENGTH usernameLength = strlen(username);      //determine length of username
+    FTP_PASSWORD_LENGTH passwordLength = strlen(username);      //determine length of password
 
     FTP_COMMAND userCMD = (FTP_COMMAND)malloc(usernameLength + 7);  //the length of the username plus the length of the FTP command
     FTP_COMMAND passCMD = (FTP_COMMAND)malloc(passwordLength + 7);  //the length of the password plus the length of the FTP command
-    memset(userCMD, 0, usernameLength + 6);                         //zero the string buffer so as not to cause any issues
-    memset(passCMD, 0, usernameLength + 6);                         //zero the string buffer so as not to cause any issues
+    memset(userCMD, 0, usernameLength + 7);                         //zero the string buffer so as not to cause any issues
+    memset(passCMD, 0, usernameLength + 7);                         //zero the string buffer so as not to cause any issues
 
     if (passCMD == NULL || userCMD == NULL)
     {
@@ -408,7 +408,7 @@ FTP_REQUEST_INFORMATION parseFTPURL(FTP_URL_FORMAT url)
 }
 
 FTP_FILESIZE getFTPfilesize(SOCKET_FILE_DESC controll,FTP_REQUEST_FILEPATH filepath){
-    FTP_COMMAND_LENGTH len = strlen(filepath) + 6;
+    FTP_COMMAND_LENGTH len = strlen(filepath) + 7;
     FTP_COMMAND sizeCmd = (FTP_COMMAND)malloc(len);
     if (sizeCmd == NULL)
     {
@@ -513,13 +513,15 @@ FTP_DOWNLOAD_STATUS downloadFTPfile(SOCKET_FILE_DESC controll, SOCKET_FILE_DESC 
         FTP_SERVER_CODE code = sendFTPCommand(controll,"type i");
     }
 
-    FTP_COMMAND_LENGTH len = strlen(filepath) + 6;
+    FTP_COMMAND_LENGTH len = strlen(filepath) + 7;
     FTP_COMMAND command = (FTP_COMMAND)malloc(len);
 
     if(command == NULL)
     {
         printf("Error allocating retrieve command\n");
         return 0; //0 is the standard internal error code
+    }else{
+        printf("Allocated\n");
     }
 
     memset(command, 0, len);
@@ -593,6 +595,7 @@ int main(int argc, char** argv)
         unsigned int reada = recv(controll, read, 10000, 0);
         printf("%s\n", read);
     }
+    sleep(1);
 
     if(executeFTPlogin(controll, info.username, info.password)!=230){
         printf("Incorrect Credential Used\n");
@@ -602,11 +605,13 @@ int main(int argc, char** argv)
     if(con.error){
         return 0;
     }
+    printf("Here\n");
     SOCKET_FILE_DESC download = getFTPServerSocket(con.address, con.port);
     if (download < 0)
     {
         return 0;
     }
+    printf("here\n");
     downloadFTPfile(controll, download,info.filepath,USE_BINARY_MODE);
     return 0;
 }
