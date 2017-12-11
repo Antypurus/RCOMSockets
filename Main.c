@@ -132,16 +132,12 @@ SOCKET_FILE_DESC getFTPServerSocket(FTP_URL_ADDRESS address, FTP_PORT port)
 FTP_SERVER_CODE sendFTPCommand(SOCKET_FILE_DESC fd,FTP_COMMAND cmd)
 {
     FTP_COMMAND_LENGTH length = strlen(cmd);    //obtain command lentgth
-    printf("Sending:...%s...\n", cmd);
+    printf("Sending:%s\n", cmd);
     unsigned int sent = 0;
     sent = write(fd, cmd, length); //send command
-    printf("sent:%d\n",sent);
     char msg[1000];
-    printf("sent\n");
-    memset(msg, 0, sizeof(msg));  
-    printf("her\n");                  //zero out the string so that there isnt any remnant unwanted data
+    memset(msg, 0, sizeof(msg));                    //zero out the string so that there isnt any remnant unwanted data
     unsigned int readF = read(fd,msg,1000);        //read server response
-    printf("here\n");
     if (sent == 0 || readF == 0) //error checking
     {
         printf("failed to send command or read response\n");
@@ -595,7 +591,6 @@ int main(int argc, char** argv)
         unsigned int reada = recv(controll, read, 10000, 0);
         printf("%s\n", read);
     }
-    sleep(1);
 
     if(executeFTPlogin(controll, info.username, info.password)!=230){
         printf("Incorrect Credential Used\n");
@@ -605,13 +600,11 @@ int main(int argc, char** argv)
     if(con.error){
         return 0;
     }
-    printf("Here\n");
     SOCKET_FILE_DESC download = getFTPServerSocket(con.address, con.port);
     if (download < 0)
     {
         return 0;
     }
-    printf("here\n");
     downloadFTPfile(controll, download,info.filepath,USE_BINARY_MODE);
     return 0;
 }
