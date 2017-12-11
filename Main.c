@@ -132,6 +132,7 @@ SOCKET_FILE_DESC getFTPServerSocket(FTP_URL_ADDRESS address, FTP_PORT port)
 FTP_SERVER_CODE sendFTPCommand(SOCKET_FILE_DESC fd,FTP_COMMAND cmd)
 {
     FTP_COMMAND_LENGTH length = strlen(cmd) + 1;    //obtain command lentgth
+    printf("Sending:%s\n",cmd);
     unsigned int sent = send(fd,cmd,length,0);      //send command
     char msg[1000];
     memset(msg, 0, sizeof(msg));                    //zero out the string so that there isnt any remnant unwanted data
@@ -353,7 +354,12 @@ FTP_REQUEST_INFORMATION parseFTPURL(FTP_URL_FORMAT url)
         return err;
     }
 
-    sscanf(url, "ftp://%99[^:]:%99[^@]@%99[^/]/%99s", username, password, domain, path);
+    unsigned int rr = sscanf(url, "ftp://%99[^:]:%99[^@]@%99[^/]/%99s", username, password, domain, path);
+    if(rr!=4){
+        unsigned int rr = sscanf(url, "ftp://%99[^:]:@%99[^/]/%99s", username, domain, path);
+        strcat(password,"");
+    }
+
 
     void* check = realloc(username,strlen(username)+1);
     void* check2 = realloc(password,strlen(password)+1);
@@ -540,6 +546,11 @@ int main(int argc, char** argv)
         return 0;
     }
 
+    printf("%s\n", info.username);
+    printf("%s\n", info.password);
+    printf("%s\n", info.address);
+    printf("%s\n",info.filepath);
+
     SOCKET_FILE_DESC controll = getFTPServerSocket(info.address, FTP_PORT_NUMBER);
     if (controll<0){
         return 0;
@@ -547,6 +558,7 @@ int main(int argc, char** argv)
 
     //this section of code reads any on-connect messages the server migth send
     {
+        sleep(1);
         char read[1000];
         memset(read, 0, sizeof(read));
         unsigned int reada = recv(controll, read, 1000, 0);
