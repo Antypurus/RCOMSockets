@@ -1,0 +1,230 @@
+WHAT ARE THE ARP PACKETS AND WHAT ARE THEY USED FOR ?
+
+ARP packets or address resolution protocol packets allow us to map logical addresses to physical addresses.In this case ARP packets are used to map IP addresses(logical addresses) to MAC addresses (physical addresses).
+To be notes that ARP packets can not be used to map ipv6 packets to mac addresses, for this we use a replacement for arp called NDP or neighbor discovery protocol.
+
+WHAT ARE THE MAC AND IP ADDRESSES FO ARP PACKETS AND WHY?
+
+When a computer issues an arp packet he issues it to the broadcast ip wich is given by the bitwise or between the host ip address and its subnet mask bit complement.
+The arp packets itself contains two sets of matching ip and mac addresses , the senders addresses and the targets. The senders ip and mac address can be filled out when the arp packets is created as it is on the current host, regarding the target we only know its ip address and not the mac address, as such it is temporarily filled with the value 00:00:00:00:00:00 , this imideatly denotes that this is an arp packet from a host that needs to discover its targets mac address. This packets will then be distributed to all computers on the network and the one with the target ip address will then send an arp packets to the original host with the mac address of the target field now being filled out with this second hosts mac address, this can be done because the original packet already had the mac address of its host.
+This second packets is sent specifically to the original hosts ip address and not to the broadcast address unlike the original arp packet.
+As such the Arp frames take the following format:
+    ARP request frame:
+        Source IP:Orignal hosts IP
+        Source MAC:Orignal host MAC
+        Destination IP:Target Hosts IP
+        Destination MAC:00:00:00:00:00:00
+
+    ARP reply frame:
+        Source IP:Target Hosts IP
+        Source MAC:Target Hosts MAC
+        Destination IP:Orignal hosts IP
+        Destination MAC:Orignal host MAC
+
+WHAT PACKETS DOES THE PING COMMAND GENERATE?
+
+The ping command generates ICMP packets or Internet Controll Message Protocol packets.
+
+WHAT ARE THE MAC AND IP ADDRESSES OF THE PING PACKETS ?
+
+Ping packets come in pairs when a host issues a packets to another the second host will then send a packet to the first informint it that the packet was received
+so we need to specify the mac and ip addresse of 2 different packets, those packets take the following form:
+
+    ICMP request frame:
+        Source IP:Orignal hosts IP
+        Source MAC:Orignal host MAC
+        Destination IP:Target Hosts IP
+        Destination MAC:Target Hosts MAC
+
+    ICMP reply frame:
+        Source IP:Target Hosts IP
+        Source MAC:Target Hosts MAC
+        Destination IP:Orignal hosts IP
+        Destination MAC:Orignal host MAC
+
+HOW TO DETERMINE IF RECEIVER ETHERNET FRAME IS ARP , IP , ICMP ?
+
+To know this we merely need to interpret the ethernet frame header. The ethernet frame header contains a 2 byte field by the name of type, this field corresponds to bytes 12 and 13 of the ethernet frame.This field allows us to distinguish between and arp, ip and rarp packets. ICMP is a protocol of IP so then we need to check the protocol field of the IP packet header in order to determine the protocol.
+
+HOW TO DETERMINE THE LENGHT OF THE RECEIVING FRAME?
+
+The length of a frame is determined by layer 1, the physical layer, the way this is done can vary from physical layer to physical layer , however it tends to work through an end of stream bit pattern that in not present in the payload, or through special manipulation of the waveform and other techniques used in the physical data transmission, however this falls outs side of the scope of this report.
+
+WHAT IS THE LOOPBACK INTERFACE AND WHY IT IMPORTANT?
+
+The loopback interface is a virtual network interface that allows a hos tto communicate with itself, this interface facilittes the troubleshoyting of problems in a given host and allows for local web servers to be ran , for whatever reason they are needed.
+In ipv4 the loopback interface is denoted by the ips in the 172.0.0.0/8 address block and the domain name associated with this interface is localhost.This interface is called loopback because as the name says the pacekts ends where it started.
+
+HOW TO CONFIGURE VLANY0?
+
+To configure a virtual lan (vlan) we must first create it, on sico switch we can do this through the following the commands:
+    conf t 
+        vlan
+    end
+we now need to add ports to the vlan, this case we need to addd tux1 and tux4 to the vlan , considering that tux 1 is connected to port 1 on slot 0 of the switch we can add port 1 to the vlan with the following commands:
+    conf t
+        interface fastethernet 0/1
+        switchport mode access
+        switch access vlan y0
+    end
+then we onlu need to add the port that tux4 is connected to , to the vlan and then the two host can communicate on the vlan of the switch.
+
+HOW MANY BROADCAST DOMAINS ARE THERE? HOW CAN YOU CONCLUDE THIS FROM THE LOGS?
+
+
+
+WHAT ROUTES ARE THERE IN THE TUXES? WHARE ARE THEIR MEANING?
+
+On tux1 we can see a route to the newtork 172.16.y1.0/24 over the gateway 172.16.y0.254/24 , this means that nay packet being sent to the 172.16.y1.0 block of addresses will be forwarded through the host on the address 172.16.y0.254/24.
+Similarly on tux2 we see a route to the block of addresses 172.16.y0.0/24 through the gateway 172.16.y1.253 this has the same meaning as before but with a different destination and gateway.
+
+WHAT INFORMATION DOES AN ENTRY OF THE FORWARDING TABLE CONTAIN?
+
+The forwarding table obtained through the command route -n on linux machines contains 9 different fields per row , however only 4 of these are pertinent to this report, those are:
+    destination - destination block of addresses of the entry
+    gateway - the address to where packets to the destination network are forwarded through.
+    genmask - the subnet mask being used
+    iface - the network interface this entry is associated with.
+
+WHAT ARP MESSAGES,AND ASSOCIATED MAC ADDRESSES ARE OBSERVER AND WHY?
+
+we can see that tux1 sent an arp packet to the broadcasta address with the destination ip being its gateway to the 172.16.y1.0 block of addresses.
+we can then see an arp reply packet comming from the gateway to the original host.
+However this packet was created when we pinged 172.16.y1.1 from 172.16.y0.1 so why is the packet sent to the gateway ?
+This happens because the gateway acts as the only interface with the 172.16.y1.0 block of addresses as it is reponsible for forwarding packets to and from as such the packets follow the route:
+    tux1 -> tux4.eth0 -> tux4.eth1 -> tux2
+and the inverse route for responses from tux2.
+The most important part is that the response arp packets come back with the mac address of the target host and not the gateway host, as such we packets with the following addresses:
+
+    ARP request frame:
+        Source MAC:Orignal host MAC
+        Destination MAC:00:00:00:00:00:00
+
+    ARP reply frame:
+        Source MAC:Target Hosts MAC
+        Destination MAC:Orignal host MAC
+
+WHAT ICMP PACKETS ARE OBSERVED AND WHY?
+
+we see ICMP packets being sent from tux1 to its tux4 gateway and an ICMP reply packet comming from tux1s gateway to tux2.
+As explained before this happens like this because even though we are pinging tux2 , our packets are being forwarded through tux4 and as such we ping tux4 from tux1 wich then pings tux2 and the reply follows this route backwards.
+
+WHAT ARE THE IP AND MAC ADDRESSES ASSOCIATED TO ICMP PACKETS ?
+
+Just like before we see packets being sent from the host to its gateway to 172.16.y1.0/24 as such the request packets have the following ip and mac addresses:
+
+    ICMP request frame:
+        Source IP:Orignal hosts IP (tux1)
+        Source MAC:Orignal host MAC (tux1)
+        Destination IP:Gateway IP (tux4)
+        Destination MAC:Gateway MAC (tux4)
+
+    ICMP reply frame:
+        Source IP:Gateway IP  (tux4)
+        Source MAC:Gateway MAC (tux4)
+        Destination IP:Orignal hosts IP (tux1)
+        Destination MAC:Orignal host MAC (tux1)
+
+ why this happens is explained in the answer above.
+
+HOW TO CONFIGURE A STATIC ROUTE IN A COMMERCIAL ROUTER?
+
+To configure a static route we must first assign an ip address to each of the network interfaces on the router that we will be needing.
+To do that on a cisco router we can use the command up address ip-address mask.Then we must activate that interface by using the command no shutdown. Then we have to configure this interface to be an internal or external interface.
+Internal interfaces are not directly connected to the internet while external interfaces are. to configure this we use the command ip nat inside for internal interfaces and the command ip nat ouside for external interfaces.
+In this experiment 2 interfaces are required, one to connecto to the internal network and one to connect to the internet.So we have an internal network interface configured on address 172.16.y1.254 so we execute the commands:
+    conf t
+        interface gigabitethernet 0/0
+        ip address 172.16.y1.254 255.255.255.0
+        no shutdown
+        ip nat inside
+    exit
+This is the interface that connects our internat network to the router, we now need to configure the external network interface that connects the router to the internet , we give this interface the address 172.16.1.y9, this is a pre assigned address in FEIP's netowrk that we we use to access the internet:
+    conf t
+        interface gigabitethernet 0/1
+        ip address 172.16.1.y9 255.255.255.0
+        no shutdown
+        ip nat outside
+    exit
+we now have the network interfaces of the router configurated, however we still need to configure the way the router is going to forward the packets.
+First we configure outbound packets route, these packets are packets going to an address on the internet and are forwarded from a special address 0.0.0.0 .
+To configure a packet route on a cisco switch we use the command ip route ip-addr ip-mask next-hop.
+In this case we configure packets from the router to the internet with:
+    ip route 0.0.0.0 0.0.0.0 172.16.1.254
+172.16.1.254 is a pre assigned address in FEUP's network that allows for communication with the internet.
+Lastly we need to tell the router how to route packets to the 172.16.y0.0 block of addresses since it is not directly connected to that network.
+We tell the router to send these packets through 172.16.y1.253 wich is the interface on the linux router configured to interface with the 172.16.y0.0 block of addresses , so we use the command:
+    ip route 172.16.y0.0 255.255.255.0 172.16.y1.253
+Lastly we need to tell each host where to send its oubound packets , the port on router that must receive these packets is the one with the address 172.16.y1.254 since this is the address conencted to our internal network and that interfaces with the router. To do this we run the in each of tuxes the command:
+    route add default gw 172.16.y1.254
+
+WHAT ARE THE PATCH FOLLOWED BY THE PACKETS IN THE EXPERIMETNS CARRIED OUT AND WHY?
+
+We first see the packet hop to the routers address on the network and the packets then hops to linux router and finnaly to tux 1.
+This happens because we have no specified route to tux1 from tux 1 , and the cisco router on the network is the default gateway.
+After we re add the path we see the packets go straight to tux4 and then to tux1.
+This happens because now we have a route for the 172.16.y0.0 block of addresses specified.
+
+HOW TO CONFIGURE NAT ON A COMMERCIAL ROUTER?
+
+We must first create a pool of addresses to assign in this case we only need one ip as the router will be the only interface with the internet. To do this we usee the command:
+    ip nat pool name start-ip end-ip prefix length
+So in out case we did:
+    ip nat pool ovrld 172.16.1.y9 172.16.1.y9 prefix 24
+then we need to assign thi spool to a given type of nat(inside , outside) to do this we can do:
+    ip nat inside source list acce-list-number pool name
+so we use in our case:
+    ip nat inside source list 1 pool ovrld
+then we finnaly need to specify the block of addresses that translation table will be apllied to. To do this we use the command :
+    acces-list access-list-number permit source
+So in our case we need the nat translation to affect two different blocks of addresses 172.16.y0.0 and 172.16.y1.0, so we run the commands:
+    access-list 1 permit 172.16.y0.0 0.0.0.7
+    access-list 1 permit 172.16.y1.0 0.0.0.7
+
+WHAT DO NAT DO?
+NAT short for network address translation allows for the conversion of one logical address to another without the loss of communication between host on the two ends.
+More specifically NAT is here used to convert between public and private ip addresses reducing the overall ip address usage.
+
+HOW TO CONFIGURE THE DNS SERVICE AT A HOST?
+
+When a host issues a request to a domain(ex:google.pt) that domain must first be translated to an ip address that can be used to send packets to.
+To do this we contact a DNS (Domain Name Server) who has a database that matches domain names to ip addresses.
+So to configure a DNS on our host what we need to do is configure the ip to the DNS we wish to contact.
+To do this we merely need to add an entry to the file /etc/resolv.conf on linux based machines.
+
+WHAT PACKETS ARE EXCHANGED BY DNS AND WHAT INFORMATION IS TRANSPORTED?
+
+From analyzing wireshark losg we can see DNS requests going from the host to our specified DNS, and corresponding responses.These correspond to the host asking the server to translate the domain name of a website (google.pt) to an ip address.
+From analyzing the logs we see that DNS requests are transfered over UDP, this is done because UDP is much faster than TCP , the load on the DNS server is reduced due to not required a 3 way handshake and DNS packets are small so they fit well into UDP frames.
+Looking deeper into the DNS request we see that the host sends a query with the domain name , the type of request (in this case A denotes an ipv4 address) and the class of the request (in this case IN, denoting an internet address).
+The DNS server then answers with the a replica of the orignal query but with a field appended to the end , this field is the addr field and contains the ip address of the domain name the host requested.
+
+HOW MANY TCP CONNECTIONS ARE OPENED BY YOUR FTP APPLICATION?
+
+2 connections are created one to port 21 where we send FTP commands and another through were we download a file from the FTP server.
+
+IN WHAT CONNECTION IS TRANSPORTED FTP CONTROLL INFORMATION?
+
+Any type of FTP controll information is sent to and from the connection of socket 21, the connection that we first opened.
+
+WHAT ARE THE PHASES OF A TCP CONNECTION?
+
+The establishment of a TCP connection uses a process called a 3 way handshake.In this mechanism when a host desires to connect to a server he must send a synchronize (SYN) request to the server, who will then answer with a synchronize and acknowledge request (SYN + ACK). The host will then send an acknowledge(ACK), this is the end of the connection establishment phase.
+
+HOW DOES THE ARQ MECHANISM WORK? WHAT ARE THE RELEVANT TCP FIELDS? WHAT RELEVANT INFORMATION CAN BE OBSERVED IN THE LOGS?
+
+TCP uses a variation on Go-Back-N as its ARQ mechanism , this variation implements a Selective Rejection mechanism in order to reduce wasted bandwidth on retransmission of correctly received frames.
+To do this a TCP receiver sends an acknowledge request to every sequence of frames it receives.When this sequence gets lost or corrupted the receiver sends a reject indicating the sequence number so the transmiter can resend it.
+The transmiter also has a timeout windows in case the acknowledge gets lost , if this happens it polls the receiver for the current acknowledged sequence , and begins retransmiting from there.
+For this a TCP header has a few fields connected to this ARQ system , these are the sequence number, the acknowledgement number, the window size and ACK field.
+All this information can be viewed in the logs by looking at the specific fields in the packet details.
+
+HOW DOES THE TCP CONGESTION CONTROLL MECHANISN WORK? WHAT ARE THE RELEVANT FIELDS? HOW DID THE THROUGHPUT OF THE DATA CONNECTION EVOLVE ALONG THE TIME? IS IT ACCORDING TO THE TCP CONGESTION CONTROLL MECHANISM?
+
+TCP congestion controll is rather simple design wise, it has two major states, a state where the network is tested and a state where the send data rate adapts to the results of the test.
+To do this during the test phase the send rate gradually increases until a significant ammount of loss of packets start happening.Then the send rate is lowered until significant packet loss no longer happens.
+From this we see that the throughput increases exponentially and then stabilizes on one value.By analizing the ammound downloadde with our FTP app we see exactly this behavior.
+
+IS THE THROUGHPUT OF A TCP DATA CONNECTION DISTURBED BY THE APPEARANCE OF A SECOND TCP CONNECTION? HOW?
+
+The appearance of a new connection does in fact affect the throughput of the existing connection , this is because a network limit is always present and seen at the router , in this way the router acts as a drain gate in this scenarion.Due to this the router has a finite ammount of data it can transmit per unit of time. By adding a new connection we are diving  up the total bandwidth available to the router between 2 connections , as such the throuput of the original connection becomes half of what it was innitially. In fact we can verify that the Throughput of a given connection is (1/Number of connections) * Total Bandwidth, though this is assuming that all connections are using their maximum transfer rate wich they would in a tcp connection.
